@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HBA Order Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial; background:#f5f5f5; padding:20px;}
+    .card { background:white; padding:15px; margin:10px 0; border-radius:10px;}
+    button { padding:8px 12px; background:#2563eb; color:white; border:none; border-radius:6px;}
+  </style>
+</head>
+<body>
+
+<h1>HBA → OZ Order Tracker</h1>
+
+<button onclick="createOrder()">+ New Order</button>
+
+<div id="orders"></div>
+
+<script>
+const supabase = supabase.createClient(
+  "https://nmvdhxxfhiymzifwziss.supabase.co",
+  "sb_publishable_iJHZOUF3T8AW5233ieBLvw_7FNlE6Wq"
+);
+
+async function loadOrders() {
+  const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+  const container = document.getElementById('orders');
+  container.innerHTML = '';
+
+  data.forEach(o => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <strong>${o.name}</strong><br/>
+      Status: ${o.status}<br/>
+      <select onchange="updateStatus('${o.id}', this.value)">
+        <option>Sent</option>
+        <option>Confirmed</option>
+        <option>Parts Ordered</option>
+        <option>In Production</option>
+        <option>Ready to Ship</option>
+      </select>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function createOrder() {
+  const name = prompt("Order name");
+  if (!name) return;
+
+  await supabase.from('orders').insert({
+    name,
+    status: "Sent"
+  });
+
+  loadOrders();
+}
+
+async function updateStatus(id, status) {
+  await supabase.from('orders').update({
+    status,
+    updated_at: new Date()
+  }).eq('id', id);
+
+  await supabase.from('logs').insert({
+    order_id: id,
+    message: "Status changed to " + status,
+    changed_by: "User"
+  });
+
+  loadOrders();
+}
+
+loadOrders();
+</script>
+
+</body>
+</html>
